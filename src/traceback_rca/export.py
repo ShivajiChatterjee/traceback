@@ -152,8 +152,13 @@ def update_benchmark(
             list(case.traceback.replay_evidence) if case.traceback else [],
         )
 
+    traceback_attempts = {
+        str(record["incident_id"]): list(record.get("attempts") or ())
+        for record in traceback_records
+        if record.get("attempts")
+    }
     (target / "summary.md").write_text(
-        _benchmark_markdown(result), encoding="utf-8"
+        _benchmark_markdown(result, traceback_attempts), encoding="utf-8"
     )
 
 
@@ -235,7 +240,10 @@ def _incident_markdown(incident: "Incident", run: "InvestigationRun") -> str:
 """
 
 
-def _benchmark_markdown(result: "BenchmarkResult") -> str:
+def _benchmark_markdown(
+    result: "BenchmarkResult",
+    traceback_attempts: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
+) -> str:
     rows = []
     for case in result.cases:
         baseline_prediction = (
@@ -253,7 +261,13 @@ def _benchmark_markdown(result: "BenchmarkResult") -> str:
             f"{traceback_correct} | {experiments} |"
         )
     i10 = next((case for case in result.cases if case.incident_id == "I10"), None)
-    showcase = _showcase_markdown(i10) if i10 else "INC-10 was not included in this run."
+    showcase = (
+        _showcase_markdown(
+            i10, (traceback_attempts or {}).get(i10.incident_id, ())
+        )
+        if i10
+        else "INC-10 was not included in this run."
+    )
     total = len(result.cases)
     complete = (
         result.baseline_completed_cases == total
@@ -272,12 +286,15 @@ def _benchmark_markdown(result: "BenchmarkResult") -> str:
         total,
         result.traceback_accuracy,
     )
-    absolute_change = (
-        f"**{result.traceback_accuracy - result.baseline_accuracy:+.1%}**"
+    accuracy_change = (
+        _percentage_point_change(
+            result.traceback_accuracy - result.baseline_accuracy
+        )
         if result.baseline_accuracy is not None
         and result.traceback_accuracy is not None
         else "**withheld until all intended predictions complete**"
     )
+    interpretation = _benchmark_interpretation(result)
     return f"""# Traceback Benchmark Summary
 
 Model: `{result.model}`
@@ -290,7 +307,7 @@ Status: **{status}**
 
 - Baseline RCA Accuracy: {baseline_accuracy}
 - Traceback RCA Accuracy: {traceback_accuracy}
-- Absolute change: {absolute_change}
+- Accuracy change: {accuracy_change}
 - Baseline completed cases: `{result.baseline_completed_cases}` / `{total}`
 - Traceback completed cases: `{result.traceback_completed_cases}` / `{total}`
 - Baseline provider errors: `{result.baseline_provider_errors}`
@@ -307,6 +324,10 @@ Status: **{status}**
 - Baseline input/output tokens: `{result.baseline_input_tokens}` / `{result.baseline_output_tokens}`
 - Traceback input/output tokens: `{result.traceback_input_tokens}` / `{result.traceback_output_tokens}`
 
+## Interpretation
+
+{interpretation}
+
 ## Per-case Results
 
 | Incident | Ground Truth | Baseline Prediction | Baseline Correct | Traceback Prediction | Traceback Correct | Experiments |
@@ -316,6 +337,12 @@ Status: **{status}**
 ## Showcase Incident - INC-10
 
 {showcase}
+
+## Healthy-case evidence - INC-09
+
+The deterministic detector found no material regression, so Traceback returned
+`no_incident` without a Gemini Investigator request, hypothesis generation, replay,
+remediation, or human-approval requirement.
 
 This summary is generated from the recorded run. No LLM judge or invented benchmark
 number is used.
@@ -330,10 +357,45 @@ def _accuracy_markdown(
     return f"**{correct} / {total} = {accuracy:.1%}**"
 
 
-def _showcase_markdown(case: "CaseBenchmarkResult") -> str:
+def _percentage_point_change(change: float) -> str:
+    points = change * 100
+    if abs(points) < 0.05:
+        return "**0 percentage points**"
+    return f"**{points:+.1f} percentage points**"
+
+
+def _benchmark_interpretation(result: "BenchmarkResult") -> str:
+    if result.baseline_accuracy is None or result.traceback_accuracy is None:
+        return (
+            "The planned benchmark is incomplete. No final comparison is reported "
+            "until all intended predictions complete."
+        )
+    if result.traceback_accuracy == result.baseline_accuracy:
+        return (
+            "Traceback did **not** improve raw RCA accuracy on this benchmark. Its "
+            "measurable architectural difference is controlled counterfactual replay: "
+            "it can challenge competing explanations and attach replay-supported "
+            "evidence to a diagnosis, at additional latency and API work."
+        )
+    return (
+        "The recorded accuracy difference is reported as measured. Replay evidence, "
+        "latency, and API work should be evaluated separately from raw accuracy."
+    )
+
+
+def _showcase_markdown(
+    case: "CaseBenchmarkResult", attempts: Sequence[Mapping[str, Any]] = ()
+) -> str:
     if not case.traceback:
         return f"Traceback failed for this case: `{case.traceback_error}`"
-    lines = []
+    lines = [
+        f"- Baseline prediction: `{case.baseline.predicted_root_cause.value}` "
+        f"(correct: `{case.baseline.correct}`)"
+        if case.baseline
+        else "- Baseline prediction: `ERROR`",
+        "- Traceback tested the competing explanations; this is the distinction, "
+        "not a baseline failure.",
+    ]
     for replay in case.traceback.replay_evidence:
         hypothesis = replay.get("hypothesis", "unknown")
         quality_delta = replay.get("quality_delta", "unknown")
@@ -344,6 +406,19 @@ def _showcase_markdown(case: "CaseBenchmarkResult") -> str:
     lines.append(
         f"- Final supported cause: `{case.traceback.predicted_root_cause.value}`"
     )
+    if attempts:
+        lines.append("- Retry provenance:")
+        for attempt in attempts:
+            error = f"; error=`{attempt['error']}`" if attempt.get("error") else ""
+            prediction = (
+                f"; prediction=`{attempt['prediction']}`"
+                if attempt.get("prediction")
+                else ""
+            )
+            lines.append(
+                f"  - Attempt {attempt.get('attempt')}: model=`{attempt.get('model')}`, "
+                f"status=`{attempt.get('status')}`{error}{prediction}"
+            )
     return "\n".join(lines)
 
 

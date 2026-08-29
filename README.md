@@ -1,71 +1,124 @@
 # Traceback
 
-**Verification-first root-cause analysis for production LLM/RAG systems.**
+**Verification-first root-cause analysis for production LLM/RAG regressions.**
 
-Traceback is a hackathon project for AI, GenAI, ML, LLMOps, and platform engineers
-responsible for an LLM/RAG application whose behavior has unexpectedly degraded.
+Traceback investigates silent quality and performance regressions, proposes
+competing explanations, and tests them with safe counterfactual replay before it
+recommends a human-approved remediation.
 
-## Problem and complete use case
+## Frozen result
 
-LLM systems can continue returning HTTP 200 responses while retrieval relevance,
-groundedness, answer usefulness, guardrail behavior, context construction, evidence
-freshness, or latency becomes materially worse. Traditional crash and exception
-monitoring may therefore report a healthy service during a serious silent regression.
+The final recorded benchmark used `gemini-3.6-flash` on ten deterministic synthetic
+incidents:
 
-Several configurations can also change together. Traceback does not promote the
-first correlated change to a verdict. It detects affected metric groups, asks Gemini
-for competing explanations, executes allowlisted counterfactual rollbacks in a local
-testbed, deterministically evaluates metric recovery, and creates an evidence-backed
-RCA recommendation for human approval.
+| System | Completed | Correct | RCA accuracy |
+|---|---:|---:|---:|
+| Strong one-request Gemini baseline | 10 / 10 | 10 / 10 | 100% |
+| Traceback | 10 / 10 | 10 / 10 | 100% |
+
+**Accuracy change: 0 percentage points.** Traceback did not improve raw RCA accuracy
+on this benchmark. Its measurable difference was verification: it ran controlled
+replays, challenged competing explanations, and attached replay-supported evidence
+to the final diagnosis. That evidence required additional latency and API work.
+
+See the [frozen benchmark summary](results/benchmark_20260829_170118/summary.md) and
+[improvement changelog](IMPROVEMENT_CHANGELOG.md).
+
+## Problem
+
+HTTP 200 does not mean an LLM/RAG system is healthy. Retrieval relevance,
+groundedness, answer quality, freshness, guardrail behavior, context construction,
+or latency can regress while the service continues returning valid responses.
+
+Possible causes include retrieval configuration, embedding changes, a stale index,
+a prompt regression, a disabled reranker, guardrail changes, slow tools, and context
+truncation. Several changes can ship together. Telemetry can show correlation, but
+it does not by itself establish which change caused the regression.
+
+## Intended user
+
+Traceback is for AI and GenAI engineers, ML platform engineers, and LLMOps/AI
+reliability engineers responsible for diagnosing production-like LLM/RAG behavior.
+
+## Core idea
+
+**Production telemetry should generate hypotheses, not verdicts.**
+
+```text
+Detect
+  -> Hypothesize
+  -> Plan a safe intervention
+  -> Counterfactual replay
+  -> Falsify or support
+  -> Evidence-backed RCA
+  -> Human-approved remediation recommendation
+```
+
+The LLM proposes plausible alternatives. Deterministic Python owns metric
+calculation, change validation, replay execution, verification thresholds, scoring,
+and hidden-answer comparison.
 
 ## Architecture
 
 ```text
-Investigator-visible incident telemetry
-    |
-Deterministic Incident Detector
-    | no material incident -> no_incident report; no LLM or replay
-    |
-Gemini Hypothesis Investigator
-    |
-Safe Experiment Planner
-    |
-Deterministic Counterfactual Replay
-    |
-Metric-aware Verifier / Falsifier
-    |
-Evidence-backed RCA Reporter
-    |
-Human Approval
+Investigator-visible telemetry and configuration history
+                         |
+                         v
+               Deterministic Detector
+                  |              |
+        no incident|              |material incident
+                  v              v
+          Abstaining report   Gemini Investigator
+                                   |
+                         competing hypotheses
+                                   v
+                         Safe Experiment Planner
+                                   |
+                     allowlisted before-value rollback
+                                   v
+                       Synthetic Replay Environment
+                                   |
+                         metric recovery evidence
+                                   v
+                         Verifier / Falsifier
+                                   |
+                                   v
+                       Evidence-backed Reporter
+                                   |
+                       Human Approval Boundary
 ```
 
-Gemini performs reasoning where alternatives must be proposed. Deterministic Python
-owns configuration diffs, metrics, regression detection, intervention validation,
-replay execution, threshold calculations, final evidence classification, benchmark
-scoring, and hidden-answer comparison. The primary benchmark does not use an
-LLM-as-judge.
+- **Incident Detector:** identifies material metric changes and affected metric
+  groups without an LLM.
+- **Investigator:** asks Gemini for two to four structured competing hypotheses from
+  investigator-visible evidence only.
+- **Experiment Planner:** validates category-bound, allowlisted rollbacks to known
+  before-values; at most three experiments run.
+- **Synthetic Replay Environment:** starts from the degraded configuration, changes
+  only the requested field, and reruns the fixed workload.
+- **Verifier/Falsifier:** classifies recovery with category-specific deterministic
+  metric rules.
+- **Reporter:** separates observed facts, inferred hypotheses, replay evidence, and
+  recommendations.
+- **Human Approval Boundary:** never executes a consequential production change.
 
-## Gemini and provider boundary
+## Fair baseline
 
-The official `google-genai` SDK is isolated behind the small
-`LLMProvider.generate(prompt, response_schema)` protocol. `GeminiProvider` supplies
-JSON-schema-constrained real responses; `ScriptedProvider` supplies deterministic
-network-free test responses. A malformed response produces an explicit structured
-parsing failure rather than an invented prediction.
+The baseline makes one Gemini diagnosis request. It receives the same model, same
+ten cases, and exact initial investigator-visible evidence as Traceback. It has no
+replay, tools, verifier, hidden annotations, or GroundTruth. The benchmark was not
+designed to make the baseline fail; its 10/10 result is a valid outcome.
 
-Real commands load `GEMINI_API_KEY` and `GEMINI_MODEL` from the environment or local
-`.env`. No model ID is hard-coded. The API key is never printed or included in an
-export, and `.env` is Git-ignored.
+## Deterministic synthetic testbed
 
-## Deterministic RAG fault-injection environment
+The testbed runs a fixed 12-query knowledge-assistant workload. Each query has two
+gold facts, a current gold document, and deterministic candidate rankings. Fault
+injection changes typed configuration fields, and the same workload runs before,
+after, and during replay.
 
-The workload contains 12 fixed knowledge-assistant queries. Every query has two gold
-answer facts, one current gold document, and ten deterministic candidate documents.
-The testbed records candidate and post-rerank positions, retrieved evidence, current
-evidence availability, context inclusion, fact coverage, guardrail decisions, and
-tool/end-to-end latency.
-
-Aggregate quality is:
+Metrics include retrieval relevance, groundedness, answer quality, aggregate
+quality, freshness, guardrail rejection, usable-answer rate, context inclusion, tool
+latency, and end-to-end latency. Aggregate quality is deterministic:
 
 ```text
 0.30 * retrieval_relevance
@@ -73,62 +126,29 @@ Aggregate quality is:
 + 0.40 * answer_quality
 ```
 
-This is a deterministic synthetic fault-injection environment created to provide
-known causal ground truth. It does **not** claim to reproduce all semantic,
-operational, or ranking behavior of a commercial production RAG stack.
+This environment provides known hidden causal GroundTruth. It is not claimed to
+reproduce all behavior of a commercial RAG system or a real staging environment.
 
-## Ten-case incident benchmark
+## Incident benchmark
 
-| Case | Hidden category | Injected mechanism | Primary visible metrics | Valid replay |
-|---|---|---|---|---|
-| INC-01 | `retriever_top_k_regression` | `top_k` 8 -> 2 excludes evidence | retrieval, answer, aggregate quality | restore `retriever_top_k=8` |
-| INC-02 | `embedding_regression` | mismatch demotes four gold documents | retrieval, answer; freshness stays healthy | restore `embedding_profile=aligned_v1` |
-| INC-03 | `prompt_regression` | prompt omits facts and adds unsupported content | groundedness and answer; retrieval stays healthy | restore `prompt_profile=stable_v1` |
-| INC-04 | `stale_index` | current evidence is replaced for three queries | freshness, stale count, answer quality | restore `index_profile=current_v2` |
-| INC-05 | `reranker_disabled` | three documents remain below `top_k=8` | post-rerank rank, retrieval, answer | restore `reranker_enabled=true` |
-| INC-06 | `guardrail_regression` | four valid answers are blocked | rejection and usable-answer rates | restore `guardrail_profile=balanced` |
-| INC-07 | `tool_latency_regression` | tool latency increases by 840 ms | tool and end-to-end latency; quality is stable | restore `tool_latency_profile=healthy` |
-| INC-08 | `context_truncation` | four retrieved evidence items are omitted | context inclusion, truncation, answer quality | restore `context_profile=standard` |
-| INC-09 | `no_incident` | canary causes small normal answer variation | all changes remain inside tolerance | no replay |
-| INC-10 | `retriever_top_k_regression` | neutral prompt revision and harmful top-k change ship together | retrieval and quality | prompt replay fails; top-k replay recovers |
+| Case | GroundTruth category | Injected mechanism | Valid replay |
+|---|---|---|---|
+| INC-01 | `retriever_top_k_regression` | top-k `8 -> 2` excludes evidence | restore `retriever_top_k=8` |
+| INC-02 | `embedding_regression` | embedding mismatch demotes gold documents | restore `embedding_profile=aligned_v1` |
+| INC-03 | `prompt_regression` | prompt omits facts and adds unsupported content | restore `prompt_profile=stable_v1` |
+| INC-04 | `stale_index` | current evidence is replaced | restore `index_profile=current_v2` |
+| INC-05 | `reranker_disabled` | relevant documents remain below top-k | restore `reranker_enabled=true` |
+| INC-06 | `guardrail_regression` | valid answers are blocked | restore `guardrail_profile=balanced` |
+| INC-07 | `tool_latency_regression` | tool latency rises while quality stays stable | restore `tool_latency_profile=healthy` |
+| INC-08 | `context_truncation` | retrieved evidence is omitted from context | restore `context_profile=standard` |
+| INC-09 | `no_incident` | normal canary variation stays within tolerance | no replay |
+| INC-10 | `retriever_top_k_regression` | neutral prompt and harmful top-k change together | prompt rollback fails; top-k rollback recovers |
 
-The benchmark deliberately mixes obvious, moderate, subtle, operational, healthy,
-and correlated-change scenarios. Cases are defined from fault semantics, not adjusted
-after seeing Gemini predictions.
+Cases were defined from fault semantics and frozen before the final benchmark.
 
-## Deterministic incident detector
+## Safe replay
 
-The detector operates only on investigator-visible before/after telemetry:
-
-- Aggregate-quality drop: material at `>= 0.10`.
-- Retrieval, groundedness, or answer-quality drop: material at `>= 0.15`.
-- Guardrail rejection increase or usable-answer drop: material at `>= 0.15`.
-- Context-inclusion drop: material at `>= 0.15`.
-- Fresh-evidence drop: material at `>= 0.15`.
-- Latency: material when the increase is at least `200 ms` and at least `30%`.
-
-Affected metrics are grouped as quality, guardrail, performance, context, and
-freshness. INC-09's aggregate drop is only `0.0167`, so the workflow returns
-`no_incident` without asking Gemini, forcing a hypothesis, or running a replay.
-
-## Fair single-request baseline
-
-The baseline receives the exact initial investigator-visible serialization used by
-Traceback: telemetry, before/after configuration, visible changes, deployment IDs,
-and timestamps. It makes exactly one diagnosis request with no tools, replays,
-verifier, hidden annotations, or ground truth.
-
-Baseline and Traceback use the same `GEMINI_MODEL`, the same ten cases, and the same
-initial incident evidence. The benchmark is not designed to make the baseline fail;
-a correct baseline prediction is a valid successful outcome.
-
-## Investigator and safe experiment planner
-
-For a material incident, the Investigator proposes two to four ranked, distinct
-hypotheses with prior confidence, supporting evidence, uncertainty, and an optional
-rollback. LLM proposals are untrusted until validated.
-
-The final allowlist is:
+Replay accepts only these fields:
 
 ```text
 retriever_top_k
@@ -141,33 +161,19 @@ tool_latency_profile
 context_profile
 ```
 
-The field must be a visible incident change, the value and type must exactly match the
-known before value, and the root-cause category must correspond to the intervention
-field. Unknown fields, arbitrary values, duplicates, unrelated interventions, code
-execution, and production mutation are rejected. At most three local experiments run.
+The field must be a visible incident change, its value and type must exactly match
+the known before-value, and the hypothesis category must match the intervention.
+Unknown fields, arbitrary values, duplicate interventions, code execution, and
+production mutation are rejected.
 
-## Controlled replay evidence
+## Verification rules
 
-Replay always starts from the incident's after-configuration and modifies only the
-explicit field. Results preserve:
+All required metrics for a category must reach their material-recovery thresholds
+for `supported_by_replay`. If all remain within non-material bounds, the hypothesis
+`fails_to_support`; partial recovery is `inconclusive`.
 
-- full before, degraded, and replay configurations;
-- before, degraded, and replay values for the intervention;
-- healthy, degraded, and replay metrics;
-- replay-minus-degraded deltas for every metric;
-- progress toward healthy metrics; and
-- completed experiment status.
-
-Replay produces evidence only. It does not claim a cause.
-
-## Metric-aware Verifier / Falsifier
-
-All relevant criteria for a category must meet their material thresholds for
-`supported_by_replay`. When every relevant recovery remains within its non-material
-bound, the result is `fails_to_support`; partial recovery is `inconclusive`.
-
-| Category | Required recovery metrics | Material thresholds |
-|---|---|---|
+| Category | Required recovery metrics | Thresholds |
+|---|---|---:|
 | top-k | retrieval relevance, aggregate quality | `0.15`, `0.15` |
 | embedding | retrieval relevance, answer quality | `0.15`, `0.10` |
 | prompt | answer quality, groundedness | `0.15`, `0.15` |
@@ -177,177 +183,178 @@ bound, the result is `fails_to_support`; partial recovery is `inconclusive`.
 | tool latency | end-to-end and tool-latency decrease | `200 ms`, `200 ms` |
 | context truncation | context inclusion, answer quality | `0.15`, `0.10` |
 
-Quality/rate movements up to `0.05` and latency movements up to `50 ms` are treated as
-non-material for falsification. These are deterministic engineering conventions for
-the synthetic benchmark, not mathematical proof of causality.
+These are deterministic conventions for this testbed, not mathematical proof of
+causality.
 
-## RCA Reporter and human approval
+## Benchmark methodology
 
-The report separates `OBSERVED`, `INFERRED`, `SUPPORTED / CHALLENGED BY REPLAY`, and
-`RECOMMENDED - NOT EXECUTED`. True-incident remediation always requires human
-approval. A healthy `no_incident` result recommends no action and sets
-`human_approval_required=false` because there is no corrective change to approve.
+The primary metric is exact root-cause accuracy against hidden GroundTruth. Secondary
+metrics are healthy-case false positives, experiment count, replay-supported
+diagnoses, latency, token usage, and completion/provider errors. No LLM judge scores
+the benchmark. GroundTruth is read only after each system's prediction attempt has
+finished.
 
-Traceback never automatically modifies a production configuration.
+### GroundTruth isolation
 
-## Ground-truth isolation
+Injected answers live in `ground_truth.py`. The detector, baseline, Investigator,
+planner, replay engine, verifier, reporter, workflow, and production incident
+exporter do not import it. Only the offline benchmark evaluator compares predictions
+with hidden answers, after the relevant workflow attempt completes.
 
-Injected answers live only in `ground_truth.py`, which is not exported from the
-package API and is never imported by the detector, baseline, investigator, planner,
-replay engine, verifier, reporter, workflow, or incident-report exporter. The offline
-benchmark retrieves a hidden answer only after both prediction attempts for that case
-have completed.
+## Results
 
-## Evaluation methodology
+The final recorded metrics are:
 
-Primary metric:
+| Metric | Baseline | Traceback |
+|---|---:|---:|
+| RCA accuracy | 100% | 100% |
+| Healthy false positive | false | false |
+| Mean latency | 7649.73 ms | 11087.59 ms |
+| Input / output tokens | 10483 / 1649 | 9988 / 2691 |
+| Completed cases | 10 / 10 | 10 / 10 |
+| Unresolved provider errors | 0 | 0 |
 
-```text
-root_cause_accuracy = correct predictions / 10 cases
+Traceback averaged `1.1111` experiments per true incident, and all `9 / 9` true
+incident diagnoses were replay-supported. These values come only from
+`results/benchmark_20260829_170118`; no cost figure is invented.
+
+The first Traceback attempt for INC-10 received HTTP 429. Resume support retried only
+that failed combination using the same `gemini-3.6-flash` model and preserved both
+attempts. Provider failure was treated as incomplete work, not an incorrect RCA.
+
+## Showcase: INC-10
+
+INC-10 changed both `prompt_profile` and `retriever_top_k`; aggregate quality fell
+from `1.0000` to `0.1667`. Gemini proposed top-k regression (prior `0.60`) and prompt
+regression (prior `0.40`).
+
+- Restoring the prompt produced `+0.0000` answer-quality and groundedness recovery.
+  The prompt explanation was challenged by replay.
+- Restoring top-k produced `+0.8333` retrieval-relevance and aggregate-quality
+  recovery. The top-k explanation was supported by replay.
+
+Both baseline and Traceback correctly predicted `retriever_top_k_regression`. The
+difference is that Traceback tested both explanations before recommending action.
+
+## Healthy case: INC-09
+
+INC-09's aggregate-quality drop was `0.0167`, inside the detector tolerance. Traceback
+returned `no_incident` with no Gemini Investigator call, hypotheses, replay,
+remediation, or human approval requirement. This demonstrates abstention and avoids
+unnecessary investigation.
+
+## Key finding
+
+> A strong LLM prompt can be an excellent incident classifier. Agentic complexity is
+> justified not merely by producing another diagnosis, but when it can generate
+> evidence that challenges or supports that diagnosis.
+
+Agentic investigation is not automatically better than a strong prompt. Verification
+becomes valuable when the cost of a confident but causally unsupported diagnosis is
+high.
+
+## Safety
+
+- Replay is local and synthetic.
+- GroundTruth is isolated from the production-facing workflow.
+- Credentials and hidden chain-of-thought are never exported.
+- Real API commands are explicit; the full benchmark requires
+  `--confirm-real-api`.
+- Traceback recommends remediation but never executes it.
+- Consequential remediation requires human approval.
+
+## Reproduction
+
+Full setup and reviewer workflow are in [REPRODUCE.md](REPRODUCE.md). From an existing
+Windows PowerShell environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m traceback_rca.demo I10
 ```
 
-Secondary metrics include healthy-case false positives, experiments per true
-incident, replay-supported diagnosis rate, latency, token usage when supplied by the
-SDK, and per-case correctness. API cost is deliberately omitted because no locally
-trustworthy pricing configuration is assumed.
+For real-API commands only, copy `.env.example` to the ignored `.env` and fill in
+`GEMINI_API_KEY` and `GEMINI_MODEL` locally:
 
-The real runner records per-case errors and continues after a failed provider or
-parse request. It does not silently invent missing predictions. The full real
-benchmark is never started without `--confirm-real-api`.
+```powershell
+Copy-Item .env.example .env
+```
 
-## Saved benchmark and incident results
+The deterministic demo makes no API call. It demonstrates the testbed interventions,
+not fresh Gemini reasoning. The saved real Gemini-backed report can be viewed with:
 
-A real benchmark automatically creates:
+```powershell
+Get-Content results\incidents\INC-10_20260829_170553\rca_report.md
+```
+
+Opt-in real commands:
+
+```powershell
+.\.venv\Scripts\python.exe -m traceback_rca.smoke_gemini
+.\.venv\Scripts\python.exe -m traceback_rca.baseline I10
+.\.venv\Scripts\python.exe -m traceback_rca.investigate I10 --save
+.\.venv\Scripts\python.exe -m traceback_rca.benchmark --confirm-real-api
+.\.venv\Scripts\python.exe -m traceback_rca.benchmark --resume results\benchmark_20260829_170118 --retry-failed --confirm-real-api
+```
+
+The resume command is provenance-preserving recovery, not cross-model fallback. Do
+not run it against the completed frozen benchmark unless a new unresolved failure
+actually exists.
+
+## Outputs
 
 ```text
 results/
-  benchmark_YYYYMMDD_HHMMSS/
+  benchmark_20260829_170118/
     metrics.json
     baseline_results.json
     traceback_results.json
     summary.md
-    incidents/
-      INC-01/
-        case_result.json
-        replay_evidence.json
-      ...
-      INC-10/
-```
-
-`summary.md` is generated from actual recorded values and includes accuracy,
-secondary metrics, a per-case table, and the INC-10 prompt-versus-top-k showcase.
-
-`investigate --save` creates a production-safe report:
-
-```text
-results/
-  incidents/
-    INC-10_YYYYMMDD_HHMMSS/
-      rca_report.json
-      rca_report.md
+    incidents/INC-01 ... INC-10/
+      case_result.json
       replay_evidence.json
+  incidents/INC-10_20260829_170553/
+    rca_report.json
+    rca_report.md
+    replay_evidence.json
+
+evidence/
+  trajectories/
+    INC-10_traceback.md
+    INC-09_no_incident.md
+  codex_development_summary.md
+  demo_script.md
 ```
 
-Production incident exports contain no hidden ground truth, credentials, API keys, or
-private chain-of-thought.
+## Limitations
 
-## Setup and commands
+- Synthetic benchmark with only ten cases.
+- Fixed fault taxonomy and deterministic workload.
+- Replay approximates staging experimentation; it is not production causality proof.
+- No claim of commercial production equivalence.
+- Gemini behavior can vary across calls and model versions.
+- Verification adds latency, token usage, and API work.
+- No repeated stochastic trials or confidence calibration.
+- No autonomous remediation.
 
-Install into a Python 3.10 virtual environment:
+## Future work
 
-```powershell
-python -m pip install -e ".[dev]"
-```
+- Ingest OpenTelemetry, LangSmith, or Langfuse traces.
+- Replay real application snapshots in a staging sandbox.
+- Evaluate a larger incident corpus and repeated stochastic trials.
+- Calibrate confidence and experiment selection.
+- Add model fallback with explicit provenance outside the official same-model
+  benchmark.
+- Collect feedback from incident-response engineers.
 
-Create `.env` only if needed, then edit it locally:
+## Submission material
 
-```powershell
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-```
-
-```dotenv
-GEMINI_API_KEY=<your Gemini API key>
-GEMINI_MODEL=<your selected Gemini model ID>
-```
-
-Run all offline tests:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest
-```
-
-Run the opt-in Gemini smoke test:
-
-```powershell
-.\.venv\Scripts\python.exe -m traceback_rca.smoke_gemini
-```
-
-Run one baseline diagnosis:
-
-```powershell
-.\.venv\Scripts\python.exe -m traceback_rca.baseline I07
-```
-
-Run one Traceback investigation, optionally saving the report:
-
-```powershell
-.\.venv\Scripts\python.exe -m traceback_rca.investigate I10
-.\.venv\Scripts\python.exe -m traceback_rca.investigate I10 --save
-```
-
-Run a deterministic replay demo without Gemini:
-
-```powershell
-.\.venv\Scripts\python.exe -m traceback_rca.demo I07
-```
-
-Run and automatically save the full real benchmark only after explicit approval:
-
-```powershell
-.\.venv\Scripts\python.exe -m traceback_rca.benchmark --confirm-real-api
-```
-
-The architecture uses approximately 19 diagnosis/hypothesis requests for a successful
-ten-case run: ten baseline requests and nine Traceback Investigator requests. INC-09
-does not invoke the Investigator. SDK retries or failed calls can change the actual
-HTTP request count.
-
-## Improvement Changelog
-
-### Baseline Foundation
-
-- Typed domain models and investigator-visible incidents.
-- Hidden evaluation-only ground truth.
-- Initial I01, I03, and I10 cases.
-
-### Iteration 1
-
-- Deterministic 12-query RAG testbed and quality metrics.
-- Controlled counterfactual replay.
-- Explicit harmful and behaviorally neutral prompt profiles.
-
-### Iteration 2
-
-- Gemini provider and offline ScriptedProvider.
-- Fair single-request baseline and competing hypotheses.
-- Safe experiment planning, Verifier/Falsifier, and structured RCA report.
-- Mandatory human approval for remediation.
-
-### Iteration 3
-
-- Complete ten-incident benchmark with varied fault semantics.
-- Metric-specific incident detection and replay verification.
-- Healthy/no-incident early exit.
-- Expanded, category-bound replay interventions.
-- Benchmark persistence and human-shareable incident report export.
-
-No measured performance improvement is claimed until the real ten-case benchmark is
-explicitly run and its generated results are reviewed.
-
-## Not implemented
-
-Traceback does not include automatic remediation, a frontend, FastAPI, LangChain,
-LangGraph, LangSmith, Datadog, Kubernetes, deployment, a real vector database, or a
-connection to a production environment. It does not claim to have invented
-counterfactual debugging or to be the first RCA system.
-
+- [Improvement changelog](IMPROVEMENT_CHANGELOG.md)
+- [Reproduction guide](REPRODUCE.md)
+- [INC-10 trajectory](evidence/trajectories/INC-10_traceback.md)
+- [INC-09 trajectory](evidence/trajectories/INC-09_no_incident.md)
+- [Coding-agent development summary](evidence/codex_development_summary.md)
+- [Demo script](evidence/demo_script.md)
+- [Submission checklist](SUBMISSION_CHECKLIST.md)

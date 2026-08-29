@@ -251,9 +251,11 @@ def test_resume_retries_only_failed_case_and_recomputes_metrics(tmp_path) -> Non
             encoding="utf-8"
         )
     )
-    assert "Status: **COMPLETE**" in (directory / "summary.md").read_text(
-        encoding="utf-8"
-    )
+    summary = (directory / "summary.md").read_text(encoding="utf-8")
+    assert "Status: **COMPLETE**" in summary
+    assert "did **not** improve raw RCA accuracy" in summary
+    assert "Attempt 1" in summary
+    assert "status=429" in summary
 
 
 def test_failed_resume_retains_original_error_and_stays_incomplete(tmp_path) -> None:
