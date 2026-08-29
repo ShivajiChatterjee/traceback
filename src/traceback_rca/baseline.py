@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Mapping, Tuple
 
-from traceback_rca.incidents import get_incident
+from traceback_rca.incidents import get_incident, list_incidents
 from traceback_rca.models import Incident
 from traceback_rca.providers import GeminiProvider, LLMProvider, LLMResponse
 from traceback_rca.structured import (
@@ -123,7 +123,9 @@ def _parse_baseline_response(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("incident_id", choices=("I01", "I03", "I10"))
+    parser.add_argument(
+        "incident_id", choices=tuple(incident.incident_id for incident in list_incidents())
+    )
     args = parser.parse_args()
     diagnosis = Baseline(GeminiProvider.from_environment()).diagnose(
         get_incident(args.incident_id)
@@ -140,4 +142,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

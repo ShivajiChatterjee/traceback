@@ -25,15 +25,15 @@ class EvaluationCase:
             raise ValueError("candidate_ranking cannot contain duplicate documents")
 
 
-_DISTRACTORS = tuple(f"distractor-{number:02d}" for number in range(1, 9))
+_DISTRACTORS = tuple(f"distractor-{number:02d}" for number in range(1, 10))
 
 
 def _ranking(gold_document_id: str, gold_rank: int) -> Tuple[str, ...]:
     """Place a gold document at a readable, one-based deterministic rank."""
 
-    if not 1 <= gold_rank <= 8:
-        raise ValueError("gold_rank must be between 1 and 8")
-    ranked = list(_DISTRACTORS[:7])
+    if not 1 <= gold_rank <= 10:
+        raise ValueError("gold_rank must be between 1 and 10")
+    ranked = list(_DISTRACTORS)
     ranked.insert(gold_rank - 1, gold_document_id)
     return tuple(ranked)
 
@@ -65,7 +65,7 @@ EVALUATION_DATASET: Tuple[EvaluationCase, ...] = (
         "What is the target for critical incident acknowledgement?",
         "doc-incident-response",
         ("critical incidents are acknowledged within 10 minutes", "an incident lead is assigned"),
-        _ranking("doc-incident-response", 4),
+        _ranking("doc-incident-response", 9),
     ),
     EvaluationCase(
         "Q05",
@@ -86,7 +86,7 @@ EVALUATION_DATASET: Tuple[EvaluationCase, ...] = (
         "How frequently are access permissions reviewed?",
         "doc-access-review",
         ("permissions are reviewed quarterly", "unused access is revoked"),
-        _ranking("doc-access-review", 7),
+        _ranking("doc-access-review", 10),
     ),
     EvaluationCase(
         "Q08",
@@ -107,7 +107,7 @@ EVALUATION_DATASET: Tuple[EvaluationCase, ...] = (
         "When are critical vulnerabilities remediated?",
         "doc-vulnerability-policy",
         ("critical findings are fixed within seven days", "exceptions require security approval"),
-        _ranking("doc-vulnerability-policy", 5),
+        _ranking("doc-vulnerability-policy", 9),
     ),
     EvaluationCase(
         "Q11",
@@ -124,4 +124,3 @@ EVALUATION_DATASET: Tuple[EvaluationCase, ...] = (
         _ranking("doc-rate-limits", 8),
     ),
 )
-

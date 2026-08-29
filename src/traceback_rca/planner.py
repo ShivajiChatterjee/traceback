@@ -8,11 +8,28 @@ from traceback_rca.models import ConfigurationValue, Incident
 from traceback_rca.taxonomy import RootCauseCategory
 
 
-ALLOWED_INTERVENTION_FIELDS = frozenset({"retriever_top_k", "prompt_profile"})
+ALLOWED_INTERVENTION_FIELDS = frozenset(
+    {
+        "retriever_top_k",
+        "prompt_profile",
+        "embedding_profile",
+        "index_profile",
+        "reranker_enabled",
+        "guardrail_profile",
+        "tool_latency_profile",
+        "context_profile",
+    }
+)
 MAX_EXPERIMENTS = 3
 _CATEGORY_INTERVENTION_FIELDS = {
     RootCauseCategory.RETRIEVER_TOP_K_REGRESSION: "retriever_top_k",
     RootCauseCategory.PROMPT_REGRESSION: "prompt_profile",
+    RootCauseCategory.EMBEDDING_REGRESSION: "embedding_profile",
+    RootCauseCategory.STALE_INDEX: "index_profile",
+    RootCauseCategory.RERANKER_DISABLED: "reranker_enabled",
+    RootCauseCategory.GUARDRAIL_REGRESSION: "guardrail_profile",
+    RootCauseCategory.TOOL_LATENCY_REGRESSION: "tool_latency_profile",
+    RootCauseCategory.CONTEXT_TRUNCATION: "context_profile",
 }
 
 

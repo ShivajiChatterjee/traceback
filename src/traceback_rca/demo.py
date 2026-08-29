@@ -4,7 +4,7 @@ import argparse
 from typing import Iterable
 
 from traceback_rca.evaluator import QualityMetrics, evaluate_configuration
-from traceback_rca.incidents import get_incident
+from traceback_rca.incidents import get_incident, list_incidents
 from traceback_rca.models import ConfigurationChange, Incident
 from traceback_rca.replay import replay
 
@@ -15,7 +15,11 @@ def _format_metrics(metrics: QualityMetrics) -> str:
         f"groundedness={metrics.groundedness:.4f} "
         f"answer={metrics.answer_quality:.4f} "
         f"aggregate={metrics.aggregate_quality:.4f} "
-        f"latency_ms={metrics.latency_ms:.2f}"
+        f"latency_ms={metrics.latency_ms:.2f} "
+        f"guardrail_rejection={metrics.guardrail_rejection_rate:.4f} "
+        f"usable={metrics.usable_answer_rate:.4f} "
+        f"context={metrics.context_inclusion_rate:.4f} "
+        f"freshness={metrics.fresh_evidence_rate:.4f}"
     )
 
 
@@ -24,8 +28,10 @@ def _print_configuration(incident: Incident, before: bool) -> None:
         incident.configuration_before if before else incident.configuration_after
     )
     print(
-        f"prompt_profile={configuration.prompt_profile} "
-        f"retriever_top_k={configuration.retriever_top_k}"
+        " ".join(
+            f"{change.field_name}={getattr(configuration, change.field_name)}"
+            for change in incident.changes
+        )
     )
 
 
@@ -59,11 +65,12 @@ def _replay_changes(incident: Incident) -> Iterable[ConfigurationChange]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("incident_id", choices=("I01", "I03", "I10"))
+    parser.add_argument(
+        "incident_id", choices=tuple(incident.incident_id for incident in list_incidents())
+    )
     args = parser.parse_args()
     run_demo(args.incident_id)
 
 
 if __name__ == "__main__":
     main()
-

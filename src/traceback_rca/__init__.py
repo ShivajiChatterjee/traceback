@@ -7,6 +7,7 @@ from traceback_rca.evaluator import (
     QualityMetrics,
     evaluate_configuration,
 )
+from traceback_rca.detector import IncidentDetection, IncidentDetector
 from traceback_rca.models import (
     ConfigurationChange,
     Incident,
@@ -27,6 +28,8 @@ __all__ = [
     "EvaluationResult",
     "Evaluator",
     "Incident",
+    "IncidentDetection",
+    "IncidentDetector",
     "InvestigationRun",
     "RCAResult",
     "QualityMetrics",

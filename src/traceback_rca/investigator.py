@@ -130,8 +130,10 @@ def _investigator_prompt(incident: Incident) -> str:
         "competing explanations using only the investigator-visible incident below. "
         "Do not declare a verdict. For a testable configuration hypothesis, propose "
         "one counterfactual that restores that changed field to its visible before "
-        "value. The only currently executable fields are retriever_top_k and "
-        "prompt_profile. Use null when no safe counterfactual exists. You have no "
+        "value. The currently executable fields are retriever_top_k, prompt_profile, "
+        "embedding_profile, index_profile, reranker_enabled, guardrail_profile, "
+        "tool_latency_profile, and context_profile. Use null when no safe "
+        "counterfactual exists. You have no "
         "ground truth, replay results, tools, or hidden causal annotations.\n\n"
         "INVESTIGATOR-VISIBLE INCIDENT:\n"
         + visible_evidence
@@ -193,4 +195,3 @@ def _parse_hypothesis(data: Mapping[str, Any]) -> InvestigationHypothesis:
         contradicting_evidence=require_string_tuple(data, "contradicting_evidence"),
         proposed_intervention=intervention,
     )
-

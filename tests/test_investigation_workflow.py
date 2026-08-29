@@ -11,7 +11,11 @@ import traceback_rca.planner as planner_module
 import traceback_rca.reporter as reporter_module
 import traceback_rca.verifier as verifier_module
 import traceback_rca.workflow as workflow_module
+import traceback_rca.detector as detector_module
+import traceback_rca.export as export_module
 import traceback_rca
+from tests.scripted_cases import CASE_CAUSES, investigator_response
+from traceback_rca.detector import MetricGroup
 from traceback_rca.incidents import get_incident
 from traceback_rca.investigator import (
     HypothesisInvestigator,
@@ -19,6 +23,7 @@ from traceback_rca.investigator import (
     InterventionProposal,
 )
 from traceback_rca.planner import (
+    ALLOWED_INTERVENTION_FIELDS,
     SafeExperimentPlanner,
     UnsafeInterventionError,
 )
@@ -98,6 +103,7 @@ def test_report_has_required_structure_and_human_approval() -> None:
     assert {
         "incident_id",
         "status",
+        "detection",
         "affected_metrics",
         "predicted_root_cause",
         "confidence",
@@ -120,6 +126,81 @@ def test_report_has_required_structure_and_human_approval() -> None:
     serialized = json.dumps(payload)
     assert "ground_truth" not in serialized
     assert "expected_root_cause" not in serialized
+
+
+@pytest.mark.parametrize(
+    "incident_id", ("I01", "I02", "I03", "I04", "I05", "I06", "I07", "I08", "I10")
+)
+def test_every_true_incident_runs_end_to_end_with_real_replay(incident_id: str) -> None:
+    provider = ScriptedProvider([investigator_response(incident_id)])
+    run = TracebackWorkflow(provider).investigate(get_incident(incident_id))
+
+    assert run.detection.material_incident
+    assert provider.call_count == 1
+    assert run.report.predicted_root_cause.value == CASE_CAUSES[incident_id][0]
+    assert any(
+        verification.outcome is VerificationOutcome.SUPPORTED
+        and verification.experiment.hypothesis.root_cause.value
+        == CASE_CAUSES[incident_id][0]
+        for verification in run.verifications
+    )
+    assert run.report.human_approval_required is True
+
+
+def test_healthy_case_skips_llm_hypotheses_replay_and_approval() -> None:
+    provider = ScriptedProvider([])
+    run = TracebackWorkflow(provider).investigate(get_incident("I09"))
+
+    assert not run.detection.material_incident
+    assert provider.call_count == 0
+    assert run.investigator is None
+    assert run.planning.experiments == ()
+    assert run.verifications == ()
+    assert run.report.predicted_root_cause is RootCauseCategory.NO_INCIDENT
+    assert run.report.status is ReportStatus.NO_MATERIAL_INCIDENT
+    assert run.report.experiments_run == 0
+    assert run.report.human_approval_required is False
+    assert "No remediation" in run.report.recommended_action
+
+
+@pytest.mark.parametrize(
+    ("incident_id", "expected_group", "metric"),
+    [
+        ("I02", MetricGroup.QUALITY, "retrieval_relevance"),
+        ("I04", MetricGroup.FRESHNESS, "fresh_evidence_rate"),
+        ("I06", MetricGroup.GUARDRAIL, "guardrail_rejection_rate"),
+        ("I07", MetricGroup.PERFORMANCE, "latency_ms"),
+        ("I08", MetricGroup.CONTEXT, "context_inclusion_rate"),
+    ],
+)
+def test_verifier_uses_incident_category_specific_metrics(
+    incident_id: str, expected_group: MetricGroup, metric: str
+) -> None:
+    run = TracebackWorkflow(
+        ScriptedProvider([investigator_response(incident_id)])
+    ).investigate(get_incident(incident_id))
+    verification = next(
+        item
+        for item in run.verifications
+        if item.experiment.hypothesis.root_cause.value == CASE_CAUSES[incident_id][0]
+    )
+
+    assert verification.metric_group is expected_group
+    assert metric in verification.relevant_metric_deltas
+    assert verification.outcome is VerificationOutcome.SUPPORTED
+
+
+def test_final_safe_intervention_allowlist_is_exact() -> None:
+    assert ALLOWED_INTERVENTION_FIELDS == {
+        "retriever_top_k",
+        "prompt_profile",
+        "embedding_profile",
+        "index_profile",
+        "reranker_enabled",
+        "guardrail_profile",
+        "tool_latency_profile",
+        "context_profile",
+    }
 
 
 @pytest.mark.parametrize(
@@ -174,6 +255,8 @@ def test_production_workflow_modules_cannot_import_hidden_ground_truth() -> None
         verifier_module,
         reporter_module,
         workflow_module,
+        detector_module,
+        export_module,
     )
 
     for module in modules:

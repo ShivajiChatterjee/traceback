@@ -81,7 +81,7 @@ def test_missing_real_gemini_configuration_fails_clearly(
     with pytest.raises(
         ProviderConfigurationError, match="GEMINI_API_KEY, GEMINI_MODEL"
     ):
-        GeminiSettings.from_environment()
+        GeminiSettings.from_environment(load_local_env=False)
 
 
 def test_gemini_settings_load_environment_without_exposing_key(monkeypatch) -> None:
@@ -123,4 +123,3 @@ def test_gemini_provider_uses_configured_model_and_json_schema_without_network()
     assert result.text == '{"status":"ok"}'
     assert result.input_tokens == 4
     assert result.output_tokens == 2
-

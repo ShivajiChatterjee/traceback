@@ -44,10 +44,11 @@ class GeminiSettings:
     model: str
 
     @classmethod
-    def from_environment(cls) -> "GeminiSettings":
-        from dotenv import load_dotenv
+    def from_environment(cls, load_local_env: bool = True) -> "GeminiSettings":
+        if load_local_env:
+            from dotenv import load_dotenv
 
-        load_dotenv()
+            load_dotenv()
         api_key = os.getenv("GEMINI_API_KEY", "").strip()
         model = os.getenv("GEMINI_MODEL", "").strip()
         missing = [
@@ -151,4 +152,3 @@ class ScriptedProvider:
         self._next_response += 1
         text = response if isinstance(response, str) else json.dumps(response)
         return LLMResponse(text=text, latency_ms=0.0)
-

@@ -47,24 +47,29 @@ class SystemConfiguration:
 
     prompt_profile: str
     retriever_top_k: int
-    embedding_model: str = "text-embedding-v1"
-    vector_index_version: str = "index-v1"
+    embedding_profile: str = "aligned_v1"
+    index_profile: str = "current_v2"
     reranker_enabled: bool = True
-    chunk_size: int = 512
-    guardrail_threshold: float = 0.70
+    guardrail_profile: str = "balanced"
+    tool_latency_profile: str = "healthy"
+    context_profile: str = "standard"
     model_name: str = "synthetic-llm-v1"
-    tool_latency_ms: float = 0.0
 
     def __post_init__(self) -> None:
         if not self.prompt_profile:
             raise ValueError("prompt_profile cannot be empty")
         if self.retriever_top_k < 1:
             raise ValueError("retriever_top_k must be at least 1")
-        if self.chunk_size < 1:
-            raise ValueError("chunk_size must be at least 1")
-        _require_unit_interval(self.guardrail_threshold, "guardrail_threshold")
-        if self.tool_latency_ms < 0:
-            raise ValueError("tool_latency_ms cannot be negative")
+        for name in (
+            "embedding_profile",
+            "index_profile",
+            "guardrail_profile",
+            "tool_latency_profile",
+            "context_profile",
+            "model_name",
+        ):
+            if not getattr(self, name):
+                raise ValueError(f"{name} cannot be empty")
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -78,8 +83,18 @@ class TelemetrySnapshot:
     answer_quality: float
     retrieval_relevance: float
     groundedness: float
+    aggregate_quality: float
     p95_latency_ms: float
+    tool_latency_ms: float
     guardrail_block_rate: float
+    usable_answer_rate: float
+    context_inclusion_rate: float
+    fresh_evidence_rate: float
+    retrieved_evidence_count: int
+    included_context_count: int
+    truncated_context_count: int
+    blocked_answer_count: int
+    stale_document_count: int
     sample_size: int
 
     def __post_init__(self) -> None:
@@ -87,9 +102,22 @@ class TelemetrySnapshot:
         _require_unit_interval(self.answer_quality, "answer_quality")
         _require_unit_interval(self.retrieval_relevance, "retrieval_relevance")
         _require_unit_interval(self.groundedness, "groundedness")
+        _require_unit_interval(self.aggregate_quality, "aggregate_quality")
         _require_unit_interval(self.guardrail_block_rate, "guardrail_block_rate")
-        if self.p95_latency_ms < 0:
-            raise ValueError("p95_latency_ms cannot be negative")
+        _require_unit_interval(self.usable_answer_rate, "usable_answer_rate")
+        _require_unit_interval(self.context_inclusion_rate, "context_inclusion_rate")
+        _require_unit_interval(self.fresh_evidence_rate, "fresh_evidence_rate")
+        if self.p95_latency_ms < 0 or self.tool_latency_ms < 0:
+            raise ValueError("latency values cannot be negative")
+        for name in (
+            "retrieved_evidence_count",
+            "included_context_count",
+            "truncated_context_count",
+            "blocked_answer_count",
+            "stale_document_count",
+        ):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} cannot be negative")
         if self.sample_size < 1:
             raise ValueError("sample_size must be at least 1")
 
