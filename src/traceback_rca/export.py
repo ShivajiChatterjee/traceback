@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import Any, Collection, Mapping, Sequence, TYPE_CHECKING
 
 from traceback_rca.incidents import display_incident_id
 
@@ -99,6 +99,64 @@ def save_benchmark(
     return directory
 
 
+def update_benchmark(
+    result: "BenchmarkResult",
+    directory: str | Path,
+    baseline_records: Sequence[Mapping[str, Any]],
+    traceback_records: Sequence[Mapping[str, Any]],
+    retried: Sequence[tuple[str, str]],
+    changed_systems: Collection[str],
+) -> None:
+    """Update only resumed benchmark artifacts, preserving recorded attempts."""
+
+    target = Path(directory)
+    payload = result.to_dict()
+    _write_json(
+        target / "metrics.json",
+        {
+            "model": payload["model"],
+            "case_count": payload["case_count"],
+            "primary_metrics": payload["primary_metrics"],
+            "secondary_metrics": payload["secondary_metrics"],
+        },
+    )
+    if "baseline" in changed_systems:
+        _write_json(target / "baseline_results.json", list(baseline_records))
+    if "traceback" in changed_systems:
+        _write_json(target / "traceback_results.json", list(traceback_records))
+
+    baseline_by_id = {str(record["incident_id"]): record for record in baseline_records}
+    traceback_by_id = {
+        str(record["incident_id"]): record for record in traceback_records
+    }
+    cases_by_id = {case.incident_id: case for case in result.cases}
+    for incident_id in dict.fromkeys(item[1] for item in retried):
+        case = cases_by_id[incident_id]
+        baseline_record = baseline_by_id[incident_id]
+        traceback_record = traceback_by_id[incident_id]
+        case_payload = case.to_dict()
+        attempt_history = {
+            system: list(record.get("attempts") or ())
+            for system, record in (
+                ("baseline", baseline_record),
+                ("traceback", traceback_record),
+            )
+            if record.get("attempts")
+        }
+        if attempt_history:
+            case_payload["attempt_history"] = attempt_history
+        case_directory = target / "incidents" / display_incident_id(incident_id)
+        _write_json(case_directory / "case_result.json", case_payload)
+        _write_json(
+            case_directory / "replay_evidence.json",
+            list(case.traceback.replay_evidence) if case.traceback else [],
+        )
+
+    (target / "summary.md").write_text(
+        _benchmark_markdown(result), encoding="utf-8"
+    )
+
+
 def _incident_markdown(incident: "Incident", run: "InvestigationRun") -> str:
     report = run.report
     changes = "\n".join(
@@ -183,12 +241,12 @@ def _benchmark_markdown(result: "BenchmarkResult") -> str:
         baseline_prediction = (
             case.baseline.predicted_root_cause.value if case.baseline else "ERROR"
         )
-        baseline_correct = str(case.baseline.correct) if case.baseline else "False"
+        baseline_correct = str(case.baseline.correct) if case.baseline else "N/A"
         traceback_prediction = (
             case.traceback.predicted_root_cause.value if case.traceback else "ERROR"
         )
-        traceback_correct = str(case.traceback.correct) if case.traceback else "False"
-        experiments = case.traceback.experiments_used if case.traceback else 0
+        traceback_correct = str(case.traceback.correct) if case.traceback else "N/A"
+        experiments = case.traceback.experiments_used if case.traceback else "N/A"
         rows.append(
             f"| {display_incident_id(case.incident_id)} | {case.ground_truth.value} | "
             f"{baseline_prediction} | {baseline_correct} | {traceback_prediction} | "
@@ -196,18 +254,47 @@ def _benchmark_markdown(result: "BenchmarkResult") -> str:
         )
     i10 = next((case for case in result.cases if case.incident_id == "I10"), None)
     showcase = _showcase_markdown(i10) if i10 else "INC-10 was not included in this run."
-    absolute_change = result.traceback_accuracy - result.baseline_accuracy
+    total = len(result.cases)
+    complete = (
+        result.baseline_completed_cases == total
+        and result.traceback_completed_cases == total
+    )
+    status = "COMPLETE" if complete else "INCOMPLETE"
+    baseline_accuracy = _accuracy_markdown(
+        result.baseline_correct,
+        result.baseline_completed_cases,
+        total,
+        result.baseline_accuracy,
+    )
+    traceback_accuracy = _accuracy_markdown(
+        result.traceback_correct,
+        result.traceback_completed_cases,
+        total,
+        result.traceback_accuracy,
+    )
+    absolute_change = (
+        f"**{result.traceback_accuracy - result.baseline_accuracy:+.1%}**"
+        if result.baseline_accuracy is not None
+        and result.traceback_accuracy is not None
+        else "**withheld until all intended predictions complete**"
+    )
     return f"""# Traceback Benchmark Summary
 
 Model: `{result.model}`
 
 Cases: {len(result.cases)}
 
+Status: **{status}**
+
 ## Primary Metric
 
-- Baseline RCA Accuracy: **{result.baseline_correct} / {len(result.cases)} = {result.baseline_accuracy:.1%}**
-- Traceback RCA Accuracy: **{result.traceback_correct} / {len(result.cases)} = {result.traceback_accuracy:.1%}**
-- Absolute change: **{absolute_change:+.1%}**
+- Baseline RCA Accuracy: {baseline_accuracy}
+- Traceback RCA Accuracy: {traceback_accuracy}
+- Absolute change: {absolute_change}
+- Baseline completed cases: `{result.baseline_completed_cases}` / `{total}`
+- Traceback completed cases: `{result.traceback_completed_cases}` / `{total}`
+- Baseline provider errors: `{result.baseline_provider_errors}`
+- Traceback provider errors: `{result.traceback_provider_errors}`
 
 ## Secondary Metrics
 
@@ -233,6 +320,14 @@ Cases: {len(result.cases)}
 This summary is generated from the recorded run. No LLM judge or invented benchmark
 number is used.
 """
+
+
+def _accuracy_markdown(
+    correct: int, completed: int, total: int, accuracy: float | None
+) -> str:
+    if accuracy is None:
+        return f"**INCOMPLETE ({completed} / {total} predictions completed; final accuracy withheld)**"
+    return f"**{correct} / {total} = {accuracy:.1%}**"
 
 
 def _showcase_markdown(case: "CaseBenchmarkResult") -> str:
@@ -277,4 +372,3 @@ def _write_json(path: Path, value: Any) -> None:
 
 def _bullets(values: tuple[str, ...]) -> str:
     return "\n".join(f"- {value}" for value in values)
-

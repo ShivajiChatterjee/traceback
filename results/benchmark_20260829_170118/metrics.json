@@ -1,0 +1,28 @@
+{
+  "case_count": 10,
+  "model": "gemini-3.6-flash",
+  "primary_metrics": {
+    "baseline_completed_cases": 10,
+    "baseline_correct": 10,
+    "baseline_provider_errors": 0,
+    "baseline_root_cause_accuracy": 1.0,
+    "benchmark_complete": true,
+    "traceback_completed_cases": 10,
+    "traceback_correct": 10,
+    "traceback_provider_errors": 0,
+    "traceback_root_cause_accuracy": 1.0
+  },
+  "secondary_metrics": {
+    "baseline_input_tokens": 10483,
+    "baseline_output_tokens": 1649,
+    "healthy_false_positive_baseline": false,
+    "healthy_false_positive_traceback": false,
+    "mean_baseline_latency_ms": 7649.73,
+    "mean_traceback_experiments_per_true_incident": 1.1111,
+    "mean_traceback_latency_ms": 11087.59,
+    "replay_supported_diagnosis_count": 9,
+    "replay_supported_diagnosis_rate": 1.0,
+    "traceback_input_tokens": 9988,
+    "traceback_output_tokens": 2691
+  }
+}

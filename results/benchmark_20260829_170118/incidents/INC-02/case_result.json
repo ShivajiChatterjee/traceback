@@ -1,0 +1,198 @@
+{
+  "baseline": {
+    "confidence": 0.95,
+    "correct": true,
+    "experiments_used": 0,
+    "fails_to_support_hypotheses": [],
+    "final_assessment": null,
+    "inconclusive_hypotheses": [],
+    "input_tokens": 1055,
+    "latency_ms": 8455.45,
+    "output_tokens": 167,
+    "predicted_root_cause": "embedding_regression",
+    "replay_evidence": [],
+    "summary": "The change in embedding profile from aligned_v1 to mismatched_v2 led to a drop in retrieval relevance and answer quality, causing gold evidence documents to fall outside the usable retrieval window.",
+    "supported_hypotheses": []
+  },
+  "baseline_error": null,
+  "ground_truth": "embedding_regression",
+  "incident_id": "I02",
+  "traceback": {
+    "confidence": 0.925,
+    "correct": true,
+    "experiments_used": 1,
+    "fails_to_support_hypotheses": [],
+    "final_assessment": "The embedding_regression hypothesis has strong causal support from controlled local replay: quality replay recovery: retrieval_relevance=+0.3333 (threshold 0.1500), answer_quality=+0.3333 (threshold 0.1000).",
+    "inconclusive_hypotheses": [],
+    "input_tokens": 1116,
+    "latency_ms": 15450.57,
+    "output_tokens": 240,
+    "predicted_root_cause": "embedding_regression",
+    "replay_evidence": [
+      {
+        "decision_thresholds": {
+          "answer_quality": 0.1,
+          "retrieval_relevance": 0.15
+        },
+        "experiment_id": "I02-E1",
+        "hypothesis": "embedding_regression",
+        "intervention": {
+          "embedding_profile": "aligned_v1"
+        },
+        "metric_group": "quality",
+        "outcome": "supported_by_replay",
+        "quality_delta": 0.3333,
+        "rationale": "quality replay recovery: retrieval_relevance=+0.3333 (threshold 0.1500), answer_quality=+0.3333 (threshold 0.1000)",
+        "relevant_metric_deltas": {
+          "answer_quality": 0.3333,
+          "retrieval_relevance": 0.3333
+        },
+        "replay": {
+          "before_configuration": {
+            "context_profile": "standard",
+            "embedding_profile": "aligned_v1",
+            "guardrail_profile": "balanced",
+            "index_profile": "current_v2",
+            "model_name": "synthetic-llm-v1",
+            "prompt_profile": "stable_v1",
+            "reranker_enabled": true,
+            "retriever_top_k": 8,
+            "tool_latency_profile": "healthy"
+          },
+          "before_values": {
+            "embedding_profile": "aligned_v1"
+          },
+          "degraded_configuration": {
+            "context_profile": "standard",
+            "embedding_profile": "mismatched_v2",
+            "guardrail_profile": "balanced",
+            "index_profile": "current_v2",
+            "model_name": "synthetic-llm-v1",
+            "prompt_profile": "stable_v1",
+            "reranker_enabled": true,
+            "retriever_top_k": 8,
+            "tool_latency_profile": "healthy"
+          },
+          "degraded_metrics": {
+            "aggregate_quality": 0.6667,
+            "allowed_answer_count": 12,
+            "answer_quality": 0.6667,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 0.6667,
+            "fresh_evidence_rate": 1.0,
+            "groundedness": 0.6667,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 8,
+            "latency_ms": 294.0,
+            "retrieval_relevance": 0.6667,
+            "retrieved_evidence_count": 8,
+            "stale_document_count": 0,
+            "tool_latency_ms": 60.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 1.0
+          },
+          "degraded_values": {
+            "embedding_profile": "mismatched_v2"
+          },
+          "delta_from_degraded": {
+            "aggregate_quality": 0.3333,
+            "allowed_answer_count": 0,
+            "answer_quality": 0.3333,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 0.3333,
+            "fresh_evidence_rate": 0.0,
+            "groundedness": 0.3333,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 4,
+            "latency_ms": 0.0,
+            "retrieval_relevance": 0.3333,
+            "retrieved_evidence_count": 4,
+            "stale_document_count": 0,
+            "tool_latency_ms": 0.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 0.0
+          },
+          "delta_toward_healthy": {
+            "aggregate_quality": 0.3333,
+            "allowed_answer_count": 0,
+            "answer_quality": 0.3333,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 0.3333,
+            "fresh_evidence_rate": 0.0,
+            "groundedness": 0.3333,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 4,
+            "latency_ms": 0.0,
+            "retrieval_relevance": 0.3333,
+            "retrieved_evidence_count": 4,
+            "stale_document_count": 0,
+            "tool_latency_ms": 0.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 0.0
+          },
+          "experiment_status": "completed",
+          "healthy_metrics": {
+            "aggregate_quality": 1.0,
+            "allowed_answer_count": 12,
+            "answer_quality": 1.0,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 1.0,
+            "fresh_evidence_rate": 1.0,
+            "groundedness": 1.0,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 12,
+            "latency_ms": 294.0,
+            "retrieval_relevance": 1.0,
+            "retrieved_evidence_count": 12,
+            "stale_document_count": 0,
+            "tool_latency_ms": 60.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 1.0
+          },
+          "incident_id": "I02",
+          "intervention": {
+            "embedding_profile": "aligned_v1"
+          },
+          "replay_configuration": {
+            "context_profile": "standard",
+            "embedding_profile": "aligned_v1",
+            "guardrail_profile": "balanced",
+            "index_profile": "current_v2",
+            "model_name": "synthetic-llm-v1",
+            "prompt_profile": "stable_v1",
+            "reranker_enabled": true,
+            "retriever_top_k": 8,
+            "tool_latency_profile": "healthy"
+          },
+          "replay_metrics": {
+            "aggregate_quality": 1.0,
+            "allowed_answer_count": 12,
+            "answer_quality": 1.0,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 1.0,
+            "fresh_evidence_rate": 1.0,
+            "groundedness": 1.0,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 12,
+            "latency_ms": 294.0,
+            "retrieval_relevance": 1.0,
+            "retrieved_evidence_count": 12,
+            "stale_document_count": 0,
+            "tool_latency_ms": 60.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 1.0
+          },
+          "replay_values": {
+            "embedding_profile": "aligned_v1"
+          }
+        },
+        "support_score": 1.0
+      }
+    ],
+    "summary": "The embedding_regression hypothesis has strong causal support from controlled local replay: quality replay recovery: retrieval_relevance=+0.3333 (threshold 0.1500), answer_quality=+0.3333 (threshold 0.1000).",
+    "supported_hypotheses": [
+      "embedding_regression"
+    ]
+  },
+  "traceback_error": null
+}

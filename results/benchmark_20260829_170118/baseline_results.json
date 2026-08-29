@@ -1,0 +1,202 @@
+[
+  {
+    "error": null,
+    "ground_truth": "retriever_top_k_regression",
+    "incident_id": "I01",
+    "result": {
+      "confidence": 0.95,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1035,
+      "latency_ms": 6534.21,
+      "output_tokens": 164,
+      "predicted_root_cause": "retriever_top_k_regression",
+      "replay_evidence": [],
+      "summary": "The retriever top_k setting was reduced from 8 to 2 in deployment dep-i01-042, leading to a significant drop in retrieved evidence count, retrieval relevance, and overall answer quality.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "embedding_regression",
+    "incident_id": "I02",
+    "result": {
+      "confidence": 0.95,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1055,
+      "latency_ms": 8455.45,
+      "output_tokens": 167,
+      "predicted_root_cause": "embedding_regression",
+      "replay_evidence": [],
+      "summary": "The change in embedding profile from aligned_v1 to mismatched_v2 led to a drop in retrieval relevance and answer quality, causing gold evidence documents to fall outside the usable retrieval window.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "prompt_regression",
+    "incident_id": "I03",
+    "result": {
+      "confidence": 0.98,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1025,
+      "latency_ms": 5858.04,
+      "output_tokens": 181,
+      "predicted_root_cause": "prompt_regression",
+      "replay_evidence": [],
+      "summary": "The prompt_profile configuration was updated from 'stable_v1' to 'regressed' in deployment dep-i03-017, resulting in a drop in answer quality and groundedness while retrieval metrics remained perfectly healthy.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "stale_index",
+    "incident_id": "I04",
+    "result": {
+      "confidence": 0.95,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1039,
+      "latency_ms": 5603.07,
+      "output_tokens": 163,
+      "predicted_root_cause": "stale_index",
+      "replay_evidence": [],
+      "summary": "The incident was caused by index_profile being changed from current_v2 to stale_v1, leading to stale documents being served and fresh evidence metrics dropping.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "reranker_disabled",
+    "incident_id": "I05",
+    "result": {
+      "confidence": 0.95,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1032,
+      "latency_ms": 16454.49,
+      "output_tokens": 176,
+      "predicted_root_cause": "reranker_disabled",
+      "replay_evidence": [],
+      "summary": "The reranker was disabled in deployment dep-i05-064, leading to post-rerank evidence positions worsening and causing retrieval relevance, context inclusion rate, and overall answer quality to degrade from 1.0 to 0.75.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "guardrail_regression",
+    "incident_id": "I06",
+    "result": {
+      "confidence": 0.98,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1044,
+      "latency_ms": 6743.64,
+      "output_tokens": 187,
+      "predicted_root_cause": "guardrail_regression",
+      "replay_evidence": [],
+      "summary": "The guardrail profile was changed from 'balanced' to 'over_strict', causing the guardrail block rate to jump from 0.0 to 0.3333 and reducing usable answer rate from 1.0 to 0.6667 despite healthy retrieval and groundedness metrics.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "tool_latency_regression",
+    "incident_id": "I07",
+    "result": {
+      "confidence": 0.98,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1031,
+      "latency_ms": 5391.61,
+      "output_tokens": 134,
+      "predicted_root_cause": "tool_latency_regression",
+      "replay_evidence": [],
+      "summary": "The change in tool_latency_profile from healthy to slow caused a significant increase in tool latency and overall end-to-end p95 latency, while quality metrics remained unaffected.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "context_truncation",
+    "incident_id": "I08",
+    "result": {
+      "confidence": 0.95,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1037,
+      "latency_ms": 5437.67,
+      "output_tokens": 164,
+      "predicted_root_cause": "context_truncation",
+      "replay_evidence": [],
+      "summary": "The incident was caused by a configuration change updating context_profile from standard to truncated, which resulted in retrieved evidence being truncated before answer generation.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "no_incident",
+    "incident_id": "I09",
+    "result": {
+      "confidence": 0.98,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1044,
+      "latency_ms": 8017.25,
+      "output_tokens": 104,
+      "predicted_root_cause": "no_incident",
+      "replay_evidence": [],
+      "summary": "The prompt canary update resulted in minor normal variation while all core operational and quality metrics remained within healthy tolerance limits.",
+      "supported_hypotheses": []
+    }
+  },
+  {
+    "error": null,
+    "ground_truth": "retriever_top_k_regression",
+    "incident_id": "I10",
+    "result": {
+      "confidence": 0.95,
+      "correct": true,
+      "experiments_used": 0,
+      "fails_to_support_hypotheses": [],
+      "final_assessment": null,
+      "inconclusive_hypotheses": [],
+      "input_tokens": 1141,
+      "latency_ms": 8001.87,
+      "output_tokens": 209,
+      "predicted_root_cause": "retriever_top_k_regression",
+      "replay_evidence": [],
+      "summary": "Deployment dep-i10-099 changed retriever_top_k from 8 to 2 along with a neutral prompt update. This reduction in retrieval depth caused retrieved evidence count to drop from 12 to 2 and retrieval relevance, groundedness, and answer quality to drop from 1.0 to 0.1667.",
+      "supported_hypotheses": []
+    }
+  }
+]

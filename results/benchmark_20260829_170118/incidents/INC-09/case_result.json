@@ -1,0 +1,36 @@
+{
+  "baseline": {
+    "confidence": 0.98,
+    "correct": true,
+    "experiments_used": 0,
+    "fails_to_support_hypotheses": [],
+    "final_assessment": null,
+    "inconclusive_hypotheses": [],
+    "input_tokens": 1044,
+    "latency_ms": 8017.25,
+    "output_tokens": 104,
+    "predicted_root_cause": "no_incident",
+    "replay_evidence": [],
+    "summary": "The prompt canary update resulted in minor normal variation while all core operational and quality metrics remained within healthy tolerance limits.",
+    "supported_hypotheses": []
+  },
+  "baseline_error": null,
+  "ground_truth": "no_incident",
+  "incident_id": "I09",
+  "traceback": {
+    "confidence": 1.0,
+    "correct": true,
+    "experiments_used": 0,
+    "fails_to_support_hypotheses": [],
+    "final_assessment": "Deterministic telemetry comparison found no material regression; the appropriate classification is no_incident.",
+    "inconclusive_hypotheses": [],
+    "input_tokens": null,
+    "latency_ms": 0.88,
+    "output_tokens": null,
+    "predicted_root_cause": "no_incident",
+    "replay_evidence": [],
+    "summary": "Deterministic telemetry comparison found no material regression; the appropriate classification is no_incident.",
+    "supported_hypotheses": []
+  },
+  "traceback_error": null
+}

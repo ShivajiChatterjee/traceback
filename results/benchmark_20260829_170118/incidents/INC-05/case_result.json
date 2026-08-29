@@ -1,0 +1,198 @@
+{
+  "baseline": {
+    "confidence": 0.95,
+    "correct": true,
+    "experiments_used": 0,
+    "fails_to_support_hypotheses": [],
+    "final_assessment": null,
+    "inconclusive_hypotheses": [],
+    "input_tokens": 1032,
+    "latency_ms": 16454.49,
+    "output_tokens": 176,
+    "predicted_root_cause": "reranker_disabled",
+    "replay_evidence": [],
+    "summary": "The reranker was disabled in deployment dep-i05-064, leading to post-rerank evidence positions worsening and causing retrieval relevance, context inclusion rate, and overall answer quality to degrade from 1.0 to 0.75.",
+    "supported_hypotheses": []
+  },
+  "baseline_error": null,
+  "ground_truth": "reranker_disabled",
+  "incident_id": "I05",
+  "traceback": {
+    "confidence": 0.925,
+    "correct": true,
+    "experiments_used": 1,
+    "fails_to_support_hypotheses": [],
+    "final_assessment": "The reranker_disabled hypothesis has strong causal support from controlled local replay: quality replay recovery: retrieval_relevance=+0.2500 (threshold 0.1500), answer_quality=+0.2500 (threshold 0.1000).",
+    "inconclusive_hypotheses": [],
+    "input_tokens": 1093,
+    "latency_ms": 12780.33,
+    "output_tokens": 277,
+    "predicted_root_cause": "reranker_disabled",
+    "replay_evidence": [
+      {
+        "decision_thresholds": {
+          "answer_quality": 0.1,
+          "retrieval_relevance": 0.15
+        },
+        "experiment_id": "I05-E1",
+        "hypothesis": "reranker_disabled",
+        "intervention": {
+          "reranker_enabled": true
+        },
+        "metric_group": "quality",
+        "outcome": "supported_by_replay",
+        "quality_delta": 0.25,
+        "rationale": "quality replay recovery: retrieval_relevance=+0.2500 (threshold 0.1500), answer_quality=+0.2500 (threshold 0.1000)",
+        "relevant_metric_deltas": {
+          "answer_quality": 0.25,
+          "retrieval_relevance": 0.25
+        },
+        "replay": {
+          "before_configuration": {
+            "context_profile": "standard",
+            "embedding_profile": "aligned_v1",
+            "guardrail_profile": "balanced",
+            "index_profile": "current_v2",
+            "model_name": "synthetic-llm-v1",
+            "prompt_profile": "stable_v1",
+            "reranker_enabled": true,
+            "retriever_top_k": 8,
+            "tool_latency_profile": "healthy"
+          },
+          "before_values": {
+            "reranker_enabled": true
+          },
+          "degraded_configuration": {
+            "context_profile": "standard",
+            "embedding_profile": "aligned_v1",
+            "guardrail_profile": "balanced",
+            "index_profile": "current_v2",
+            "model_name": "synthetic-llm-v1",
+            "prompt_profile": "stable_v1",
+            "reranker_enabled": false,
+            "retriever_top_k": 8,
+            "tool_latency_profile": "healthy"
+          },
+          "degraded_metrics": {
+            "aggregate_quality": 0.75,
+            "allowed_answer_count": 12,
+            "answer_quality": 0.75,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 0.75,
+            "fresh_evidence_rate": 1.0,
+            "groundedness": 0.75,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 9,
+            "latency_ms": 276.0,
+            "retrieval_relevance": 0.75,
+            "retrieved_evidence_count": 9,
+            "stale_document_count": 0,
+            "tool_latency_ms": 60.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 1.0
+          },
+          "degraded_values": {
+            "reranker_enabled": false
+          },
+          "delta_from_degraded": {
+            "aggregate_quality": 0.25,
+            "allowed_answer_count": 0,
+            "answer_quality": 0.25,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 0.25,
+            "fresh_evidence_rate": 0.0,
+            "groundedness": 0.25,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 3,
+            "latency_ms": 18.0,
+            "retrieval_relevance": 0.25,
+            "retrieved_evidence_count": 3,
+            "stale_document_count": 0,
+            "tool_latency_ms": 0.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 0.0
+          },
+          "delta_toward_healthy": {
+            "aggregate_quality": 0.25,
+            "allowed_answer_count": 0,
+            "answer_quality": 0.25,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 0.25,
+            "fresh_evidence_rate": 0.0,
+            "groundedness": 0.25,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 3,
+            "latency_ms": 18.0,
+            "retrieval_relevance": 0.25,
+            "retrieved_evidence_count": 3,
+            "stale_document_count": 0,
+            "tool_latency_ms": 0.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 0.0
+          },
+          "experiment_status": "completed",
+          "healthy_metrics": {
+            "aggregate_quality": 1.0,
+            "allowed_answer_count": 12,
+            "answer_quality": 1.0,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 1.0,
+            "fresh_evidence_rate": 1.0,
+            "groundedness": 1.0,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 12,
+            "latency_ms": 294.0,
+            "retrieval_relevance": 1.0,
+            "retrieved_evidence_count": 12,
+            "stale_document_count": 0,
+            "tool_latency_ms": 60.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 1.0
+          },
+          "incident_id": "I05",
+          "intervention": {
+            "reranker_enabled": true
+          },
+          "replay_configuration": {
+            "context_profile": "standard",
+            "embedding_profile": "aligned_v1",
+            "guardrail_profile": "balanced",
+            "index_profile": "current_v2",
+            "model_name": "synthetic-llm-v1",
+            "prompt_profile": "stable_v1",
+            "reranker_enabled": true,
+            "retriever_top_k": 8,
+            "tool_latency_profile": "healthy"
+          },
+          "replay_metrics": {
+            "aggregate_quality": 1.0,
+            "allowed_answer_count": 12,
+            "answer_quality": 1.0,
+            "blocked_answer_count": 0,
+            "context_inclusion_rate": 1.0,
+            "fresh_evidence_rate": 1.0,
+            "groundedness": 1.0,
+            "guardrail_rejection_rate": 0.0,
+            "included_context_count": 12,
+            "latency_ms": 294.0,
+            "retrieval_relevance": 1.0,
+            "retrieved_evidence_count": 12,
+            "stale_document_count": 0,
+            "tool_latency_ms": 60.0,
+            "truncated_context_count": 0,
+            "usable_answer_rate": 1.0
+          },
+          "replay_values": {
+            "reranker_enabled": true
+          }
+        },
+        "support_score": 1.0
+      }
+    ],
+    "summary": "The reranker_disabled hypothesis has strong causal support from controlled local replay: quality replay recovery: retrieval_relevance=+0.2500 (threshold 0.1500), answer_quality=+0.2500 (threshold 0.1000).",
+    "supported_hypotheses": [
+      "reranker_disabled"
+    ]
+  },
+  "traceback_error": null
+}
