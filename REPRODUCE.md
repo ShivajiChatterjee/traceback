@@ -6,7 +6,7 @@ real benchmark run is required to inspect the frozen evidence.
 ## 1. Open or clone the repository
 
 ```powershell
-git clone <repository-url>
+git clone <https://github.com/ShivajiChatterjee/traceback>
 Set-Location traceback
 ```
 
